@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>King COunty Data</title>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"/>
+	</head>
+	<body> 
+		<script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script> 
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script> 
+		<script src="KCPop2000.js"></script>
+		<div id="mapid" style="width: 600px; height: 400px; margin: auto"></div>
+		<script>
+			var mymap = L.map('mapid', {center: [47.6062, -122.3321], zoom: 10});
+			L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(mymap);
+			// choose color for population
+			function classification(x){
+                return x > 5000? '#006d2c':
+				x > 4000? '#2ca25f':
+				x > 3000? '#66c2a4':
+				x > 2000? '#99d8c9':
+				x > 1000? '#ccece6': '#a6bddb';
+			}
+			// color scheme styler for population
+			function popStyle(feature){
+				return {
+					fillColor:classification(feature.properties.TotPop),
+					weight:1,
+					opacity:1,
+					color:'white',
+					fillOpacity:0.85
+				};
+			}
+			// choose color for other language
+			function langClass(x){
+                return x > 50? '#b30000':
+				x > 40? '#e34a33':
+				x > 30? '#fc8d59':
+				x > 20? '#fdbb84':
+				x > 10? '#fdd49e': '#fef0d9';
+			}
+			// variable for 2000 population
+			var pop2000Layer = L.geoJSON(myData, {style: popStyle, onEachFeature:popUp2000});
+			// set functions for style on mouse over or mouse out for 2000 population
+			function newStyle(e) {var layer = e.target; layer.setStyle({weight:5});}
+			function oldStyle(e) {pop2000Layer.resetStyle(e.target);}
+			// open and close popup on mouse over or mouse out for 2000 population
+			function popUp2000(feature, layer){
+				layer.bindPopup('Census tract: ' + feature.properties.NAME + '<br>' + 'Total Population: ' + feature.properties.TotPop);
+				layer.on('mouseover', function(){layer.openPopup();});
+				layer.on('mouseover', newStyle);
+				layer.on('mouseout', oldStyle);
+				layer.on('mouseout', function(){layer.closePopup();});
+			}; 
+			// variable for 2010 population
+			var pop2010Layer = L.geoJSON(false, {style:function (feature) {
+				return {
+					fillColor: classification(feature.properties.E01003097),
+					weight: 1,
+					opacity: 1,
+					color: 'white',
+					fillOpacity: 0.85
+				}}, 
+			onEachFeature:popUp2010});
+			// get geoJSON and pass it by pop2010Layer
+			$.getJSON("https://opendata.arcgis.com/datasets/42ba035b52b14df3b9b16653e8a1e46c_2593.geojson", 
+				function(data) {
+					pop2010Layer.addData(data);
+				}
+			);
+			// set functions for style on mouse over or mouse out for 2010 population
+			function newStyle2010(e) {var layer = e.target; layer.setStyle({weight:5});}
+			function oldStyle2010(e) {pop2010Layer.resetStyle(e.target);}
+			// open and close popup on mouse over or mouse out for 2010 population
+			function popUp2010(feature, layer){
+				layer.bindPopup(feature.properties.TRACT_LBL + '<br>' + 'Total Population: ' + feature.properties.E01003097);
+				layer.on('mouseover', function(){layer.openPopup();});
+				layer.on('mouseover', newStyle2010);
+				layer.on('mouseout', oldStyle2010);
+				layer.on('mouseout', function(){layer.closePopup();});
+			}; 
+			// variable for percent other language
+			var otherLangLayer = L.geoJSON(false, {style:function (feature) {
+				return {
+					fillColor: langClass(feature.properties.PercentOtherLang),
+					weight: 1,
+					opacity: 1,
+					color: 'white',
+					fillOpacity: 0.85
+				}},
+			onEachFeature:popUpLang});
+			// get geoJSON and pass it by otherLangLayer
+			$.getJSON("https://opendata.arcgis.com/datasets/b4cf82cdfa2b437eb51ccbfe980aa39e_2549.geojson", 
+				function(data) {
+					otherLangLayer.addData(data);
+				}
+			);
+			// set functions for style on mouse over or mouse out for other language
+			function newStyleLang(e) {var layer = e.target; layer.setStyle({weight:5});}
+			function oldStyleLang(e) {otherLangLayer.resetStyle(e.target);}
+			// open and close popup on mouse over or mouse out for other language
+			function popUpLang(feature, layer){
+				layer.bindPopup(feature.properties.TRACT_LBL_1 + '</br>'
+					+ 'Percent Other Language: ' + Math.round(feature.properties.PercentOtherLang) + '%');
+				layer.on('mouseover', function(){layer.openPopup();});
+				layer.on('mouseover', newStyleLang);
+				layer.on('mouseout', oldStyleLang);
+				layer.on('mouseout', function(){layer.closePopup();});
+			}; 
+			// add 2000 remove others
+			function pop2000() {
+				pop2000Layer.addTo(mymap);
+				mymap.removeLayer(pop2010Layer);
+				mymap.removeLayer(otherLangLayer);
+			}
+			// add 2010 remove others
+			function pop2010() {
+				pop2010Layer.addTo(mymap);
+				mymap.removeLayer(pop2000Layer);
+				mymap.removeLayer(otherLangLayer);
+			}
+			// add language remove others
+			function otherLang() {
+				otherLangLayer.addTo(mymap);
+				mymap.removeLayer(pop2000Layer);
+				mymap.removeLayer(pop2010Layer);
+			}
+		</script>
+		<!-- add/remove layer buttons -->
+		<button onclick="pop2000()">Total Population in 2000</button></br>
+		<button onclick="pop2010()">Total Population in 2010</button></br>
+		<button onclick="otherLang()">Percent Speak Other Language</button></br>
+		<p>The element I chose to use in my map is a number called "Percent Speak Other Language", known in the attributes as 
+		"PercentOtherLang". This attribute is a percentage of the population that speaks a language other than English.</p>
+	</body>
+</html>
